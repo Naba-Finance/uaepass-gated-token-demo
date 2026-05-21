@@ -1,0 +1,23 @@
+# Foundry
+out/
+cache/
+broadcast/
+
+# Local deployment notes (not published)
+DEPLOY.md
+
+# Node / frontend
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+
+# Env & secrets
+.env
+.env.local
+*.log
+.DS_Store
+
+# Never commit ad-hoc deploy scripts (may contain keys)
+deploy.sh
+*.local.sh
