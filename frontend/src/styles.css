@@ -210,6 +210,22 @@ a {
   color: var(--red);
 }
 
+.badge.pending {
+  background: #fff4e0;
+  color: #9a6700;
+}
+
+.info {
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--green-dark);
+  background: var(--green-soft);
+  border: 1px solid #bfe0cb;
+  border-radius: 10px;
+}
+
 .facts {
   list-style: none;
   padding: 0;

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   useAccount,
   useConnect,
@@ -32,10 +32,33 @@ function fmtDate(ts: bigint | undefined) {
 }
 
 export function App() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected, chainId, connector } = useAccount();
   const { connect, connectors, isPending: connecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: switching } = useSwitchChain();
+
+  // Detect the connected wallet's self-reported identity (WalletConnect peer
+  // metadata). UX hint only — the on-chain claim() still enforces eligibility,
+  // so spoofing the name just makes a doomed claim revert.
+  const [walletName, setWalletName] = useState<string>("");
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const provider = (await connector?.getProvider?.()) as
+          | { session?: { peer?: { metadata?: { name?: string; url?: string } } } }
+          | undefined;
+        const meta = provider?.session?.peer?.metadata;
+        if (active) setWalletName(`${meta?.name ?? ""} ${meta?.url ?? ""}`.trim());
+      } catch {
+        if (active) setWalletName("");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [connector, address]);
+  const isNabaWallet = /naba/i.test(walletName);
 
   const tokenConfigured = TOKEN_ADDRESS.toLowerCase() !== ZERO;
   const enabled = Boolean(address) && tokenConfigured;
@@ -64,7 +87,11 @@ export function App() {
 
   const now = Math.floor(Date.now() / 1000);
   const cooldownLeft = claimableAt ? Number(claimableAt) - now : 0;
-  const canClaim = Boolean(isUAEPass) && cooldownLeft <= 0;
+  // A detected Naba Wallet may be counterfactual (not yet deployed on-chain); its
+  // first claim userOp deploys + registers it, so wasCreatedByUAEPass passes at
+  // execution time. Treat it as eligible to claim even if the read is still false.
+  const eligibleToClaim = Boolean(isUAEPass) || isNabaWallet;
+  const canClaim = eligibleToClaim && cooldownLeft <= 0;
 
   const { writeContract, data: txHash, isPending: claiming, error: claimError } = useWriteContract();
   const { isLoading: confirming, isSuccess: confirmed } = useWaitForTransactionReceipt({ hash: txHash });
@@ -192,13 +219,27 @@ export function App() {
 
           <section className="card">
             <div className="label">Eligibility</div>
-            <div className={`badge ${eligible ? "ok" : "no"}`}>
-              {isLoading ? "Checking…" : eligible ? "Eligible" : "Not eligible"}
+            <div className={`badge ${eligible ? "ok" : isNabaWallet ? "pending" : "no"}`}>
+              {isLoading
+                ? "Checking…"
+                : eligible
+                  ? "Eligible"
+                  : isNabaWallet
+                    ? "Naba Wallet — activates on first claim"
+                    : "Not eligible"}
             </div>
             <ul className="facts">
               <li>
                 <span>Naba Wallet account</span>
-                <b>{isUAEPass === undefined ? "—" : isUAEPass ? "yes" : "no"}</b>
+                <b>
+                  {isUAEPass === undefined
+                    ? "—"
+                    : isUAEPass
+                      ? "yes"
+                      : isNabaWallet
+                        ? "detected (not yet activated)"
+                        : "no"}
+                </b>
               </li>
               <li>
                 <span>Balance</span>
@@ -217,11 +258,20 @@ export function App() {
                 <b>{fmt(nextAmount)} NUAE</b>
               </li>
             </ul>
+
+            {isNabaWallet && !isUAEPass && !isLoading && (
+              <p className="info">
+                ⓘ This wallet isn't deployed on-chain yet, so the registry reports it as
+                unregistered. Because you're connected with <b>Naba Wallet</b>, your first
+                claim deploys and registers it in the same transaction — so it becomes
+                eligible automatically.
+              </p>
+            )}
           </section>
 
           <section className="card">
             <div className="label">Claim</div>
-            {!isUAEPass ? (
+            {!eligibleToClaim ? (
               <p className="muted">Only Naba Wallet accounts can claim.</p>
             ) : cooldownLeft > 0 ? (
               <p className="muted">
@@ -229,7 +279,12 @@ export function App() {
                 {Math.ceil(cooldownLeft / 3600)}h left).
               </p>
             ) : (
-              <p className="muted">You can claim {fmt(nextAmount)} NUAE now.</p>
+              <p className="muted">
+                You can claim {fmt(nextAmount)} NUAE now.
+                {!isUAEPass && isNabaWallet
+                  ? " Your Naba Wallet activates on this first transaction."
+                  : ""}
+              </p>
             )}
             <button
               disabled={!canClaim || claiming || confirming}
