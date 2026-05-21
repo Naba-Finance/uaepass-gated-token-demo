@@ -65,6 +65,12 @@ a {
     grid-template-columns: 1fr;
     gap: 20px;
   }
+
+  /* Sticky sidebar overlaps the stacked main column on mobile — pin off. */
+  .sidebar {
+    position: static;
+    top: auto;
+  }
 }
 
 /* ---------------- Sidebar ---------------- */
