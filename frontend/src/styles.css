@@ -65,19 +65,18 @@ a {
     grid-template-columns: 1fr;
     gap: 20px;
   }
-
-  /* Sticky sidebar overlaps the stacked main column on mobile — pin off. */
-  .sidebar {
-    position: static;
-    top: auto;
-  }
 }
 
 /* ---------------- Sidebar ---------------- */
 
-.sidebar {
-  position: sticky;
-  top: 32px;
+/* Sticky only on the two-column desktop layout. When the layout stacks on
+   mobile, a sticky sidebar overlaps the main column — so keep it static there
+   (the default). Scoped to a min-width query so source order can't override it. */
+@media (min-width: 881px) {
+  .sidebar {
+    position: sticky;
+    top: 32px;
+  }
 }
 
 .brand {

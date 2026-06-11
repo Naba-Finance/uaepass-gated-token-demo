@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   useAccount,
-  useConnect,
   useDisconnect,
   useReadContracts,
   useWriteContract,
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi";
+import { useAppKit } from "@reown/appkit/react";
 import { formatUnits } from "viem";
 import { tokenAbi, credentialAbi } from "./abi";
 import {
@@ -33,7 +33,7 @@ function fmtDate(ts: bigint | undefined) {
 
 export function App() {
   const { address, isConnected, chainId, connector } = useAccount();
-  const { connect, connectors, isPending: connecting } = useConnect();
+  const { open } = useAppKit();
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: switching } = useSwitchChain();
 
@@ -182,13 +182,7 @@ export function App() {
             <section className="card hero">
               <h2>Check your eligibility</h2>
               <p className="muted">Connect with Naba Wallet to claim and manage NUAE.</p>
-              {connectors
-                .filter((c) => c.id === "walletConnect")
-                .map((c) => (
-                  <button key={c.uid} onClick={() => connect({ connector: c })} disabled={connecting}>
-                    {connecting ? "Connecting…" : "Connect with WalletConnect"}
-                  </button>
-                ))}
+              <button onClick={() => open()}>Connect Wallet</button>
             </section>
           ) : (
             <>
